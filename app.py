@@ -16,7 +16,7 @@ security = HTTPBasic()
 
 def run_tests():
     res = subprocess.run(
-        ["sh", "run-tests.sh"],
+        ["bash", "run-tests.sh"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         cwd=test_runner_tests_path,
