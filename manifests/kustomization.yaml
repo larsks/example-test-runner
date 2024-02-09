@@ -6,6 +6,7 @@ commonLabels:
 resources:
   - deployment.yaml
   - service.yaml
+  - route.yaml
 
 secretGenerator:
   - name: test-runner-config
