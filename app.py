@@ -21,7 +21,7 @@ def run_tests():
         stderr=subprocess.PIPE,
         cwd=test_runner_tests_path,
     )
-    with open("results.txt", "ab") as fd:
+    with open("data/results.txt", "ab") as fd:
         fd.write(res.stdout)
 
 

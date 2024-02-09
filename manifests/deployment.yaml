@@ -31,19 +31,19 @@ spec:
             - name: test-runner-home
               mountPath: /home/test-runner
       containers:
-        - name: example
-          image: docker.io/alpinelinux/darkhttpd:latest
-          command:
-            - darkhttpd
-            - /tests
-            - --port
-            - "8080"
+        - name: test-runner
+          image: ghcr.io/larsks/example-test-runner
+          envFrom:
+            - secretRef:
+                name: test-runner-config
           ports:
             - name: http
               containerPort: 8080
           volumeMounts:
             - name: test-runner-tests
               mountPath: /tests
+            - name: test-runner-home
+              mountPath: /app/data
       volumes:
         - name: test-runner-tests
           emptyDir: {}
