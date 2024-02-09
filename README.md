@@ -31,3 +31,9 @@ You can deploy the manifests into your current namespace by running:
 ```
 kubectl apply -k manifests
 ```
+
+If you want to see what the manifests look like -- including the generated Secret -- without deploying the, you can run:
+
+```
+kubectl kustomize manifests
+```
