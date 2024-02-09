@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-runner
+spec:
+  replicas: 1
+  template:
+    spec:
+      initContainers:
+        - name: git-the-tests
+          image: docker.io/bitnami/git:2.43.0
+          envFrom:
+            - secretRef:
+                name: test-runner-config
+          command:
+            - sh
+            - -c
+            - |
+              export HOME=/home/test-runner
+
+              cat > $HOME/.netrc <<EOF
+              machine github.com
+              login $TEST_RUNNER_GITHUB_USERNAME
+              password $TEST_RUNNER_GITHUB_TOKEN
+              EOF
+
+              git clone ${TEST_RUNNER_REPOSITORY_URL} /tests
+          volumeMounts:
+            - name: test-runner-tests
+              mountPath: /tests
+            - name: test-runner-home
+              mountPath: /home/test-runner
+      containers:
+        - name: example
+          image: docker.io/alpinelinux/darkhttpd:latest
+          command:
+            - darkhttpd
+            - /tests
+            - --port
+            - "8080"
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: test-runner-tests
+              mountPath: /tests
+      volumes:
+        - name: test-runner-tests
+          emptyDir: {}
+        - name: test-runner-home
+          emptyDir: {}
