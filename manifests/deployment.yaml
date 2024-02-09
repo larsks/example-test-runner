@@ -6,9 +6,37 @@ spec:
   replicas: 1
   template:
     spec:
+      volumes:
+
+        # We're creating two emptyDir [1] volumes here, which means
+        # that ephemeral storage space will be allocated when the Pod
+        # starts and destroyed when the Pod exits.
+        #
+        # If you needed persistent storage you would use a
+        # persistentVolumeClaim [2] instead of an emptyDir.
+        #
+        # [1]: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
+        # [2]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+
+        # This volume will hold conents of the remote repository
+        - name: test-runner-tests
+          emptyDir: {}
+
+        # This is a general purpose directory we will use for writing
+        # any sort of state while the application is running.
+        - name: test-runner-home
+          emptyDir: {}
+
       initContainers:
-        - name: git-the-tests
+
+        # This initContainer uses the docker.io/bitnami/git image to
+        # fetch the remote repository and write it to
+        # /tests.
+        - name: get-tests
           image: docker.io/bitnami/git:2.43.0
+          env:
+            - name: HOME
+              value: /home/test-runner
           envFrom:
             - secretRef:
                 name: test-runner-config
@@ -16,8 +44,10 @@ spec:
             - sh
             - -c
             - |
-              export HOME=/home/test-runner
-
+              # Write credentials from secret to a netrc file [1] so that
+              # git will not prompt for them interactively.
+              #
+              # [1]: https://confluence.atlassian.com/bitbucketserver/permanently-authenticating-with-git-repositories-776639846.html#PermanentlyauthenticatingwithGitrepositories-Usingthe.netrcfile
               cat > $HOME/.netrc <<EOF
               machine github.com
               login $TEST_RUNNER_GITHUB_USERNAME
@@ -26,26 +56,44 @@ spec:
 
               git clone ${TEST_RUNNER_REPOSITORY_URL} /tests
           volumeMounts:
+
+            # Mount the tests volume on /tests
             - name: test-runner-tests
               mountPath: /tests
+
+            # Mount the state directory on $HOME, since that's where
+            # git will look for the .netrc file.
             - name: test-runner-home
               mountPath: /home/test-runner
+
       containers:
         - name: test-runner
           image: ghcr.io/larsks/example-test-runner:main
+          env:
+
+            # The application requires this variable (which is useful when
+            # running things locally), but we can use a fixed value here
+            # in the manifest. This doesn't need to be via the Secret.
+            - name: TEST_RUNNER_TESTS_PATH
+              value: /tests
+
           envFrom:
+
+            # All other environment variables comes from the test-runner-config
+            # Secret. This inclues the URL for the repository as well as
+            # the authentication credentials.
             - secretRef:
                 name: test-runner-config
+
           ports:
             - name: http
               containerPort: 8080
           volumeMounts:
             - name: test-runner-tests
               mountPath: /tests
+
+            # In this container we're mounting the state directory on
+            # /app/data, since the application will be running with a cwd
+            # of /app (due to the WORKDIR directive in the Containerfile).
             - name: test-runner-home
               mountPath: /app/data
-      volumes:
-        - name: test-runner-tests
-          emptyDir: {}
-        - name: test-runner-home
-          emptyDir: {}
